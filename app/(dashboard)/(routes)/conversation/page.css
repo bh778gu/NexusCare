@@ -24,3 +24,27 @@
     inline-size: 105px;         /* Diameter of the circle */
     block-size: 105px;        /* Diameter of the circle */
 }
+
+.conversation-container {
+  width: 50vw; /* 50% of the viewport width */
+  height: 100vh; /* 100% of the viewport height */
+  border: 4px solid #ccc; /* Adjust border width and color as needed */
+  padding: 10px; /* Adjust padding as needed */
+  display: flex; /* Use flexbox */
+  flex-direction: column; /* Arrange children vertically */
+  align-items: flex-end; /* Align items to the right side */
+  animation-name: slideInRight; /* Name of the animation */
+  animation-duration: 1s; /* Duration of the animation */
+  animation-timing-function: ease-out; /* Timing function */
+}
+
+@keyframes slideInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
