@@ -1,69 +1,154 @@
 "use client";
-import { ArrowRight, Code, ImageIcon, MessageSquare, Music, VideoIcon } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+
+import axios from "axios";
+import * as z from "zod"; 
+import { MessageSquare } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import React, { useEffect } from 'react';
-
-const tools = [
-  {
-    label:"Coversation",
-    icon: MessageSquare,
-    color: "text-violet-500",
-    bgColor: "bg-violet-500/10",
-    href: "/conversation"
-  },
-]
-
-const DashboardPage = ()  => {
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://assets.calendly.com/assets/external/widget.js';
-    script.async = true;
 
 
-    document.head.appendChild(script);
+import { Heading } from "@/components/heading";
+import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Empty } from "@/components/empty";
 
-    return () => {
-      // Cleanup when the component unmounts
-      document.head.removeChild(script);
+import { formSchema } from "../(dashboard)/(routes)/conversation/constants";
+
+import { useState } from "react";
+import { ChatCompletionRequestMessage } from "openai";
+import { cn } from "@/lib/utils";
+import { Loader } from "@/components/loader";
+import { UserAvatar } from "@/components/user-avatar";
+import { BotAvatar } from "@/components/bot-avatar";
+import './page.css';
+import FadeInComponent from "./components/FadeInComponent";
+ 
+const ConversationPage = () => {
+    const router = useRouter();
+    const [messages, setMessages] = useState<ChatCompletionRequestMessage[]>([]);
+
+    const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema), 
+        defaultValues: {
+            prompt: ""
+        }
+    });
+
+  
+      
+    const isLoading = form.formState.isSubmitting;
+
+    const onSubmit = async (values: z.infer<typeof formSchema>) => {
+        try {
+            const userMessage: ChatCompletionRequestMessage = {
+                role: "user",
+                content: values.prompt,
+            };
+            const newMessages = [...messages, userMessage];
+            const response = await axios.post("/api/conversation", {
+                messages: newMessages,
+            });
+
+            setMessages((current) => [...current, userMessage, response.data]);
+            console.log(response);
+            form.reset()
+        }catch (error: any) {
+            //TODO catch specific errors
+            console.log(error);
+        } finally {
+            router.refresh();
+        }
     };
-  }, []);
 
-const router = useRouter();  
-  return (
-    <div>
-      {/* Include the Calendly badge widget */}
-      <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet" />
-
-      <div className="mb-8 space-y-4">
-        <h2 className="text-2xl md:text-4xl font-bold text-center">
-          Get your questions answered
-        </h2>
-        <p className="text-muted-foreground font-light text-sm md:text-lg text-center">
-          Chat with your personal assistant
-        </p>
-      </div>
-      <div className="px-4 md:px-20 lg:px-32 space-y-4">
-        {tools.map((tool) => (
-          <Card
-            onClick={() => router.push(tool.href)}
-            key={tool.href}
-            className="p-4 border-black/5 flex items-center justify-between hover:shadow-md transition cursor-pointer"
-          >
-            <div className="flex items-center gap-x-4">
-              <div className={cn("p-2 w-fit rounded-md", tool.bgColor)}>
-                <tool.icon className={cn("w-8 h-8", tool.color)}/>
-              </div>
+    return(
+            <div>
+                <Button className="circular-button" onClick={() => alert("Clicked button!")}>
+                    Click Me  
+                </Button> 
+           {/* this is my button*/}
+        <div>
+            <Heading 
+            title="Talk to Your Doctors"
+            description="get help instantly"
+            icon={MessageSquare}
+            iconColor="text-violet-500"
+            bgColor="bg-violet-500/10"
+            />
+            <div className="px-4 lg:px-8">
+            
+                    <div>
+                    <Form {...form}>
+                        <form
+                            onSubmit={form.handleSubmit(onSubmit)}
+                            className="
+                                rounded-lg
+                                border
+                                w-full
+                                p-4
+                                px-3
+                                md:px-6
+                                focus-within:shadow-sm
+                                grid
+                                grid-cols-12
+                                gap-2
+                            "
+                        >
+                            <FormField
+                                name="prompt"
+                                render={({field}) => (
+                                    <FormItem className="col-span-12 lg:col-span-10">
+                                        <FormControl className="m-0 p-0">
+                                            <Input
+                                            className="border-0 outline-none focus-visible:ring-0 focus-visible:ring-transparent"
+                                            disabled={isLoading}
+                                            placeholder="How are you feeling today?"
+                                            {...field}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <Button className="col-span-12 lg:col-span-2 w-full" disabled={isLoading}>
+                                Generate
+                            </Button>
+                        </form>
+                    </Form>
+                </div>
+                <div className="space-y-4 mt-4">
+                    {isLoading && (
+                        <div className="p-8 rounded-lg w-full flex items-center justify-center bg-muted">
+                            <Loader />
+                        </div>
+                    )}
+                    {messages.length === 0 && !isLoading && (
+                        <div>
+                            <Empty label="No conversation started."/>
+                        </div>
+                    )}
+                
+                    <div className="flex flex-col-reverse gap-y-4">
+                       {messages.map((message) => (
+                        <div 
+                            key={message.content}
+                            className={cn(
+                            "p-8 w-full flex items-start gap-x-8 rounded-lg",
+                            message.role === "user" ? "bg-white border border-black/10" : "bg-muted"
+                        )}
+                        >
+                            {message.role === "user" ? <UserAvatar /> : <BotAvatar />}
+                            <p className="text-sm">
+                                {message.content}
+                            </p>
+                        </div>
+                        ))}
+                    </div>
+                </div>
             </div>
-            <div className="font-semibold">
-              {tool.label}
-            </div>
-            <ArrowRight className="w-5 h-5" />
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
+        </div>
+        </div>
+    );
 }
-export default DashboardPage;
+
+export default ConversationPage;
